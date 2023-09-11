@@ -76,6 +76,21 @@ async function video(req) {
       `v1/conversations/${conversationId}/questions`
     );
     const resVideo = await apiClient.get(`/v1/conversations/${conversationId}`);
+    const resAnalytics = await apiClient.get(
+      `/v1/conversations/${conversationId}/analytics`
+    );
+    const resActionItems = await apiClient.get(
+      `/v1/conversations/${conversationId}/action-items`
+    );
+    const followUps = await apiClient.get(
+      `/v1/conversations/${conversationId}/follow-ups`
+    );
+    const topics = await apiClient.get(
+      `/v1/conversations/${conversationId}/topics`
+    );
+    const trackers = await apiClient.get(
+      `/v1/conversations/${conversationId}/trackers`
+    );
 
     return {
       code: 200,
@@ -83,6 +98,11 @@ async function video(req) {
       transcript: resTranscript.data.transcript.payload,
       questions: resQuestions.data.questions,
       video: resVideo.data,
+      analytics: resAnalytics.data,
+      actionitems: resActionItems.data,
+      followups: followUps.data,
+      topics: topics.data,
+      trackers: trackers.data,
     };
   } catch (err) {
     console.log(err);
@@ -90,7 +110,7 @@ async function video(req) {
   }
 }
 
-const symblaiParams = {
+const symblaiMarketingParams = {
   confidenceThreshold: 0.7,
   customVocabulary: ["marketing director", "meeting", "customer"],
   detectEntities: true,
@@ -121,6 +141,61 @@ const symblaiParams = {
   mode: "default",
 };
 
+const symblaiSalesParams = {
+  confidenceThreshold: 0.7,
+  customVocabulary: [
+    "sales representative",
+    "purchase",
+    "order",
+    "invoice",
+    "discount",
+    "deal",
+    "customer",
+    "product",
+  ],
+  detectEntities: true,
+  entities: [
+    {
+      customType: "roles",
+      text: "sales representative",
+    },
+    {
+      customType: "actions",
+      text: "purchase",
+    },
+  ],
+  detectPhrases: true,
+  enableAllTrackers: true,
+  trackers: [
+    {
+      name: "sales objections",
+      vocabulary: [
+        "too expensive",
+        "not interested",
+        "already have one",
+        "need to think about it",
+      ],
+    },
+    {
+      name: "confirmation",
+      vocabulary: [
+        "I'll take it",
+        "let's finalize the deal",
+        "send the invoice",
+      ],
+    },
+    {
+      name: "customer interests",
+      vocabulary: ["can you tell me more", "interested in", "how does it work"],
+    },
+  ],
+  enableSpeakerDiarization: true,
+  diarizationSpeakerCount: 2, // Assuming a sales call typically involves a sales rep and a potential buyer.
+  enableSummary: true,
+  languageCode: "en-US",
+  mode: "default",
+};
+
 async function upload(req) {
   const { url, name } = req.body;
   try {
@@ -131,7 +206,8 @@ async function upload(req) {
     const res = await apiClient.post(`/v1/process/video/url`, {
       url,
       name,
-      ...symblaiParams,
+      ...symblaiSalesParams,
+     // mode: url,
     });
 
     return {
@@ -140,7 +216,10 @@ async function upload(req) {
     };
   } catch (err) {
     console.log(err);
-    return { code: 400, message: "Cannot register" };
+    return {
+      code: 400,
+      message: err.response.data.message || "Cannot upload video",
+    };
   }
 }
 
